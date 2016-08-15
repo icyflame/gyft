@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup as bs
 import re
 import json
 import getpass
+import sys
 
 #### Parsing from commmand line
 import argparse
@@ -13,6 +14,33 @@ parser.add_argument('-user', type = str, help = "Username")
 erp_password = getpass.getpass("Enter your ERP password: ")
 args = parser.parse_args()
 #### Parsing ends
+
+#### Figure out if we can infer the location of the subjects.json file
+
+try:
+
+    filin = open("subjects.json", "r")
+    subjects_file_path = "subjects.json"
+    subjects = json.load(filin)
+    print "Subjects loaded from JSON File"
+
+except IOError:
+
+    try:
+
+        filin = open("gyft/subjects.json", "r")
+        subjects = json.load(filin)
+        subjects_file_path = "gyft/subjects.json"
+        print "Subjects loaded from JSON File"
+
+    except IOError:
+
+        print "We were unable to infer location of subjects.json. Please pass \
+        it as a Command Line Argument"
+        sys.exit(1)
+
+
+#### Figuring out ends
 
 ERP_HOMEPAGE_URL = 'https://erp.iitkgp.ernet.in/IIT_ERP3/'
 ERP_LOGIN_URL = 'https://erp.iitkgp.ernet.in/SSOAdministration/auth.htm'
@@ -134,5 +162,23 @@ for day in timetable_dict.keys():
 
 with open('data.txt', 'w') as outfile:
     json.dump(timetable_dict, outfile, indent = 4, ensure_ascii=False)
-
 print ("Timetable saved to data.txt")
+
+print "Going through the subjects JSON file to check if all subjects are listed"
+
+subjects_changed = False
+for day in timetable_dict.keys():
+    for time in timetable_dict[day]:
+        subject_code = timetable_dict[day][time][0]
+        if not subject_code in subjects.keys():
+            print "Subject code %s is not there in our file yet. Please help us by filling it out: " % subject_code
+            subject_name = raw_input("Please enter the full name of the" +
+                    "subject %s: " % subject_code)
+            subjects[subject_code] = subject_name
+            subjects_changed = True
+        else:
+            print "%s -> %s" % (subject_code, subjects[subject_code])
+
+if subjects_changed:
+    with open('subjects.json', 'w') as outfile:
+        json.dump(subjects, outfile)
