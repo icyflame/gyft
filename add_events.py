@@ -10,6 +10,9 @@ from oauth2client import tools
 import json
 import datetime
 
+possible_proxy_env_vars = ['http_proxy', 'https_proxy', 'HTTP_PROXY', \
+        'HTTPS_PROXY']
+
 DEBUG = False
 
 try:
@@ -74,7 +77,25 @@ def main():
     """
     now = datetime.datetime.now()
     credentials = get_credentials()
+
+    # decide if we want to use proxy depending on the user's env variables
+    use_proxy = False
+    for item in possible_proxy_env_vars:
+        if item in os.environ.keys():
+            if "10.3.100.207:8080" in os.environ[item]:
+                use_proxy_str =  input('We detected that your system has a proxy configured. Do \
+                you want to use 10.3.100.207.8080 as a proxy while making HTTP \
+                requests? (Y/n): ')
+                if len(use_proxy_str) == 0 or use_proxy_str.lower() == 'y':
+                    use_proxy = True
+
     http = credentials.authorize(httplib2.Http())
+
+    if (use_proxy):
+        http = credentials.authorize(httplib2.Http(proxy_info = \
+            httplib2.ProxyInfo(httplib2.socks.PROXY_TYPE_HTTP_NO_TUNNEL, \
+                '10.3.100.207', 8080)))
+
     service = discovery.build('calendar', 'v3', http=http)
     # Get your timetable
     with open('data.txt') as data_file:    
